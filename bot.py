@@ -13,6 +13,8 @@ from telegram.ext import (
 load_dotenv()
 TOKEN = os.getenv("BOT_TOKEN")
 
+analyze_coin = '📊 Анализ монеты'
+find_coin = '🔍 Найти монету'
 coin_labels = {
     "BTC": "BTC (Биткоин)",
     "ETH": "ETH (Эфириум)",
@@ -35,7 +37,7 @@ def chunked_buttons(items, row_size=2):
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
-    keyboard = [[KeyboardButton("Analyze coin"), KeyboardButton("Find coin")]]
+    keyboard = [[KeyboardButton(analyze_coin), KeyboardButton(find_coin)]]
     reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
 
     await update.message.reply_text(
@@ -46,7 +48,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text
 
-    if text == "Analyze coin":
+    if text == analyze_coin:
 
         coin_buttons = chunked_buttons(
             [KeyboardButton(label) for label in coin_labels.values()], 
@@ -77,13 +79,18 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         else:
             await update.message.reply_text("⚠️ Неизвестная монета.")
 
-    elif text == "Find coin":
-        await update.message.reply_text("Эта функция скоро появится 🔍")
+    elif text == find_coin:
+        recommended = find_best_coins_to_buy(list(coin_labels.keys()), top_n=3)
+        keyboard = [[KeyboardButton("🔙 Назад")]]
+        reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+
+        await update.message.reply_text(
+            recommended, reply_markup=reply_markup, parse_mode="Markdown"
+        )
 
     elif text == "🔙 Назад":
-        
         keyboard = [
-            [KeyboardButton("Analyze coin"), KeyboardButton("Find coin")]
+            [KeyboardButton(analyze_coin), KeyboardButton(find_coin)]
         ]
 
         reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
@@ -133,6 +140,42 @@ def get_binance_coin_analysis(symbol: str) -> str:
 
     except Exception as e:
         return f"⚠️ Ошибка при получении данных: {e}"
+    
+
+def find_best_coins_to_buy(coin_list: list, top_n: int = 1) -> str:
+    url = "https://api.binance.com/api/v3/ticker/24hr"
+    best = []
+
+    try:
+        for symbol in coin_list:
+            pair = f"{symbol}USDT"
+            response = requests.get(url, params={"symbol": pair})
+            data = response.json()
+
+            if "code" in data:
+                continue
+
+            change = float(data["priceChangePercent"])
+            volume = float(data["quoteVolume"])
+
+            if volume > 5_000_000 and change > 0:
+                best.append((symbol, change, volume))
+
+        if not best:
+            return "🤷 Не удалось найти монету для покупки прямо сейчас."
+
+        best.sort(key=lambda x: x[1], reverse=True)
+        top = best[:top_n]
+
+        msg = "🟢 *Рекомендуемые монеты для покупки:*\n\n"
+        for symbol, change, volume in top:
+            name = coin_labels.get(symbol, symbol)
+            msg += f"• {name}\n  Изменение: `{change:.2f}%`\n  Объём: `${volume:,.0f}`\n\n"
+
+        return msg
+
+    except Exception as e:
+        return f"⚠️ Ошибка при анализе монет: {e}"
 
 
 def main():
