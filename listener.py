@@ -4,7 +4,7 @@ api_id = 23960136
 api_hash = "5ebee58f511d916fd634ff99ab20ac9d"
 
 channel_id = -1001695131110
-bot_username = "@CryptoAlexandrBot"
+bot_username = "@AleksandLi"
 
 client = TelegramClient("my_session", api_id, api_hash)
 
