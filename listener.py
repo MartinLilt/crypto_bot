@@ -10,14 +10,11 @@ client = TelegramClient("my_session", api_id, api_hash)
 
 @client.on(events.NewMessage(chats=channel_id))
 async def handler(event):
-    message = event.message.text
-
-    print(f"🔄 Пересылаю сообщение в бота: {message}")
     try:
-        await client.send_message(bot_username, message)
-        print("✅ Успешно отправлено боту")
+        await client.forward_messages(bot_username, event.message)
+        print("✅ Сообщение переслано целиком")
     except Exception as e:
-        print("❌ Ошибка:", e)
+        print("❌ Ошибка при пересылке:", e)
 
 
 async def main():
